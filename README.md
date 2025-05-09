@@ -200,6 +200,40 @@ This example demonstrates a bot that handles initial customer interaction and ca
 5. The bot remains silent while operator and customer talk
 6. When the operator leaves, the bot resumes handling the call
 
+## Example 5: Silence Detection
+
+This example demonstrates a bot that can detect prolonged silence during a call, play TTS prompts after a configurable period of silence, and gracefully terminate the call after a configurable number of unanswered prompts.
+
+### How It Works
+
+1. Bot answers an incoming call
+2. Bot monitors the audio stream for periods of silence
+3. If silence continues for longer than the configured threshold (default: 10 seconds), the bot plays a TTS prompt
+4. If the user responds, the conversation continues normally
+5. If the user remains silent, the bot plays additional prompts
+6. After a configurable number of unanswered prompts (default: 3), the bot terminates the call
+7. A call summary is generated with statistics about the call
+
+For more details, see [SILENCE_DETECTION_README.md](SILENCE_DETECTION_README.md).
+
+### Testing in Daily Prebuilt (No Actual Phone Calls)
+
+```shell
+curl -X POST "http://localhost:7860/start" \
+	 -H "Content-Type: application/json" \
+	 -d '{
+		 "config": {
+			"silence_detection": {
+			   "testInPrebuilt": true,
+			   "silenceThreshold": 10.0,
+			   "maxUnansweredPrompts": 3
+			}
+		 }
+	  }'
+```
+
+This returns a Daily room URL where you can test the bot's silence detection capabilities.
+
 ### Testing in Daily Prebuilt (No Actual Phone Calls)
 
 ```shell

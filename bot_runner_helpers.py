@@ -175,6 +175,32 @@ def create_simple_dialout_settings(body: Dict[str, Any]) -> Dict[str, Any]:
     return simple_dialout_settings
 
 
+def create_silence_detection_settings(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Create silence detection settings based on configuration.
+
+    Args:
+        body: The configuration dictionary
+
+    Returns:
+        Silence detection settings dictionary
+    """
+    # Default silence detection settings
+    silence_detection_settings = {
+        "testInPrebuilt": DEFAULT_TEST_IN_PREBUILT,
+        "silenceThreshold": 10.0,  # seconds
+        "maxUnansweredPrompts": 3
+    }
+
+    # If silence_detection already exists, merge the defaults with the existing settings
+    if "silence_detection" in body:
+        existing_settings = body["silence_detection"]
+        # Update defaults with existing settings (existing values will override defaults)
+        for key, value in existing_settings.items():
+            silence_detection_settings[key] = value
+
+    return silence_detection_settings
+
+
 async def process_dialin_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """Process incoming dial-in request data to create a properly formatted body.
 
@@ -207,5 +233,8 @@ async def process_dialin_request(data: Dict[str, Any]) -> Dict[str, Any]:
     elif example == "simple_dialin":
         # Create simple dialin settings
         body["simple_dialin"] = create_simple_dialin_settings(body)
+    elif example == "silence_detection":
+        # Create silence detection settings
+        body["silence_detection"] = create_silence_detection_settings(body)
 
     return body
