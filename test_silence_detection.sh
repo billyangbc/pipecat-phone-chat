@@ -19,6 +19,12 @@ curl -X POST "http://localhost:7860/start" \
                "testInPrebuilt": true,
                "silenceThreshold": 10.0,
                "maxUnansweredPrompts": 3
+            },
+            "dialin_settings": {
+               "from": "+12345678901",
+               "to": "+19876543210",
+               "call_id": "test-call-id",
+               "call_domain": "test-call-domain"
             }
          }
       }'

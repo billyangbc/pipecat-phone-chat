@@ -35,6 +35,27 @@ echo "==================================================="
 echo ""
 echo "Configure your Daily phone number to send webhooks to the above URL."
 echo "When someone calls your Daily phone number, the silence detection bot will answer."
+echo ""
+echo "You can also test with a curl command:"
+echo ""
+echo "curl -X POST \"https://$NGROK_DOMAIN/start\" \\"
+echo "     -H \"Content-Type: application/json\" \\"
+echo "     -d '{
+         \"config\": {
+            \"silence_detection\": {
+               \"testInPrebuilt\": true,
+               \"silenceThreshold\": 10.0,
+               \"maxUnansweredPrompts\": 3
+            },
+            \"dialin_settings\": {
+               \"from\": \"+12345678901\",
+               \"to\": \"+19876543210\",
+               \"call_id\": \"test-call-id\",
+               \"call_domain\": \"test-call-domain\"
+            }
+         }
+      }'"
+echo ""
 echo "The bot will prompt the caller after 10 seconds of silence."
 echo "After 3 unanswered prompts, the bot will terminate the call."
 echo "A call summary will be displayed in the console."

@@ -28,7 +28,11 @@ The silence detection feature can be configured with the following parameters:
       "maxUnansweredPrompts": 3  // Maximum number of unanswered prompts before terminating
     },
     "dialin_settings": {
-      // Required for real calls, not needed for testing
+      // Optional: Provides call information for real calls
+      "from": "+12345678901",
+      "to": "+19876543210",
+      "call_id": "call-id-string",
+      "call_domain": "domain-string"
     }
   }
 }
