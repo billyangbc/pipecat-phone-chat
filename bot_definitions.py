@@ -78,7 +78,7 @@ bot_registry.register(
     BotType(
         name="silence_detection",
         settings_creator=create_silence_detection_settings,
-        required_settings=["dialin_settings"],
+        required_settings=[],  # No required settings, we have fallbacks
         incompatible_with=["call_transfer", "simple_dialin", "simple_dialout", "voicemail_detection"],
         auto_add_settings={"dialin_settings": {}},
     )

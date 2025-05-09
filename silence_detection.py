@@ -184,19 +184,32 @@ async def main(
             transcription_enabled=True,
         )
     else:
-        daily_dialin_settings = DailyDialinSettings(
-            call_id=dialin_settings.get("call_id"), call_domain=dialin_settings.get("call_domain")
-        )
-        transport_params = DailyParams(
-            api_url=daily_api_url,
-            api_key=daily_api_key,
-            dialin_settings=daily_dialin_settings,
-            audio_in_enabled=True,
-            audio_out_enabled=True,
-            video_out_enabled=False,
-            vad_analyzer=SileroVADAnalyzer(),
-            transcription_enabled=True,
-        )
+        # Check if dialin_settings is None
+        if dialin_settings is None:
+            logger.warning("No dialin settings provided, falling back to test mode")
+            transport_params = DailyParams(
+                api_url=daily_api_url,
+                api_key=daily_api_key,
+                audio_in_enabled=True,
+                audio_out_enabled=True,
+                video_out_enabled=False,
+                vad_analyzer=SileroVADAnalyzer(),
+                transcription_enabled=True,
+            )
+        else:
+            daily_dialin_settings = DailyDialinSettings(
+                call_id=dialin_settings.get("call_id"), call_domain=dialin_settings.get("call_domain")
+            )
+            transport_params = DailyParams(
+                api_url=daily_api_url,
+                api_key=daily_api_key,
+                dialin_settings=daily_dialin_settings,
+                audio_in_enabled=True,
+                audio_out_enabled=True,
+                video_out_enabled=False,
+                vad_analyzer=SileroVADAnalyzer(),
+                transcription_enabled=True,
+            )
 
     # Initialize transport with Daily
     transport = DailyTransport(
@@ -260,7 +273,18 @@ async def main(
     
     # Get silence detection settings if present
     silence_settings = {}
-    if "silence_detection" in body:
+    
+    # Check if body is a string (JSON string) and parse it
+    if isinstance(body, str):
+        try:
+            import json
+            body = json.loads(body)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse body as JSON, using default settings")
+            body = {}
+    
+    # Now body should be a dictionary
+    if isinstance(body, dict) and "silence_detection" in body:
         silence_settings = body.get("silence_detection", {})
     
     # Get silence threshold and max unanswered prompts from settings or use defaults
