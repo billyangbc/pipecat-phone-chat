@@ -227,7 +227,7 @@ async def main(
 
     # ------------ FUNCTION DEFINITIONS ------------
 
-    async def terminate_call(params: FunctionCallParams):
+    async def terminate_call(params: FunctionCallParams = None):
         """Function the bot can call to terminate the call upon completion."""
         if session_manager:
             # Mark that the call was terminated by the bot
@@ -256,7 +256,17 @@ async def main(
             print("="*50 + "\n")
 
         # Then end the call
-        await params.llm.queue_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
+        try:
+            await llm.queue_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
+        except Exception as e:
+            logger.warning(f"Error queueing end frame: {str(e)}")
+        
+        # Ensure transport is properly closed
+        try:
+            if hasattr(transport, 'leave'):
+                await transport.leave()
+        except Exception as e:
+            logger.warning(f"Error leaving transport: {str(e)}")
 
     # Define function schemas for tools
     terminate_call_function = FunctionSchema(
