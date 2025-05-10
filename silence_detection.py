@@ -40,16 +40,18 @@ daily_api_url = os.getenv("DAILY_API_URL", "https://api.daily.co/v1")
 class SilenceDetector(FrameProcessor):
     """Detects silence and triggers TTS prompts after a specified duration."""
 
-    def __init__(self, silence_threshold=10.0, max_unanswered_prompts=3):
+    def __init__(self, silence_threshold=10.0, max_unanswered_prompts=3, tts_service=None):
         """Initialize the silence detector.
         
         Args:
             silence_threshold: Seconds of silence before triggering a prompt
             max_unanswered_prompts: Maximum number of unanswered prompts before terminating
+            tts_service: TTS service instance for direct prompt playback
         """
         super().__init__()
         self.silence_threshold = silence_threshold
         self.max_unanswered_prompts = max_unanswered_prompts
+        self.tts = tts_service
         self.last_user_activity = time.time()
         self.user_speaking = False
         self.unanswered_prompts = 0
@@ -82,6 +84,8 @@ class SilenceDetector(FrameProcessor):
             logger.debug("User stopped speaking")
             
         elif isinstance(frame, InputAudioRawFrame):
+            #logger.debug(f">>>> self.silence_threshold: {self.silence_threshold}, self.max_unanswered_prompts {self.max_unanswered_prompts}")
+            #logger.debug(f">>>> User input audio frame silence_duration : {current_time - self.last_user_activity:.2f}, prompt_triggered: {self.prompt_triggered}, unanswered_prompts: {self.unanswered_prompts}")
             # Only check for silence if the user is not currently speaking
             if not self.user_speaking:
                 silence_duration = current_time - self.last_user_activity
@@ -102,6 +106,8 @@ class SilenceDetector(FrameProcessor):
                     
                     # Trigger silence prompt
                     await self.trigger_silence_prompt()
+                    self.prompt_triggered = False
+                    self.last_user_activity = current_time  # Reset last user activity time
                     
                     # Check if we've reached the maximum number of unanswered prompts
                     if self.unanswered_prompts >= self.max_unanswered_prompts:
@@ -112,7 +118,7 @@ class SilenceDetector(FrameProcessor):
         await self.push_frame(frame, direction)
 
     async def trigger_silence_prompt(self):
-        """Trigger a silence prompt."""
+        """Trigger a silence prompt directly via TTS."""
         if self.unanswered_prompts == 1:
             prompt = "I noticed you've been quiet for a while. Are you still there?"
         elif self.unanswered_prompts == 2:
@@ -120,9 +126,13 @@ class SilenceDetector(FrameProcessor):
         else:
             prompt = "Since I haven't heard from you, I'll be ending the call soon. Please speak if you'd like to continue."
         
-        # Create a user message frame with the silence prompt
-        silence_message = {"role": "user", "content": f"[SILENCE_PROMPT_{self.unanswered_prompts}]"}
-        await self.push_frame(silence_message, FrameDirection.UPSTREAM)
+        # Play prompt directly via TTS if available
+        if self.tts:
+            await self.tts.say(prompt)
+        else:
+            # Fallback to original behavior
+            silence_message = {"role": "user", "content": f"[SILENCE_PROMPT_{self.unanswered_prompts}]"}
+            await self.push_frame(silence_message, FrameDirection.UPSTREAM)
 
     async def terminate_call(self):
         """Terminate the call after maximum unanswered prompts."""
@@ -130,21 +140,26 @@ class SilenceDetector(FrameProcessor):
             await self.terminate_call_function(None)
 
     def generate_call_summary(self):
-        """Generate a summary of the call statistics."""
+        """Generate a detailed summary of the call statistics."""
         if not self.call_end_time:
             self.call_end_time = time.time()
             
         call_duration = self.call_end_time - self.call_start_time
+        total_silence_time = sum(event['duration'] for event in self.silence_events)
+        avg_silence_duration = total_silence_time / len(self.silence_events) if self.silence_events else 0
         
         summary = {
             "call_duration_seconds": round(call_duration, 2),
             "call_duration_formatted": f"{int(call_duration // 60)}m {int(call_duration % 60)}s",
             "silence_events": len(self.silence_events),
+            "total_silence_time": round(total_silence_time, 2),
+            "avg_silence_duration": round(avg_silence_duration, 2),
             "silence_events_details": self.silence_events,
             "unanswered_prompts": self.unanswered_prompts,
             "call_terminated_by_silence": self.unanswered_prompts >= self.max_unanswered_prompts,
             "call_start_time": datetime.fromtimestamp(self.call_start_time).strftime("%Y-%m-%d %H:%M:%S"),
-            "call_end_time": datetime.fromtimestamp(self.call_end_time).strftime("%Y-%m-%d %H:%M:%S")
+            "call_end_time": datetime.fromtimestamp(self.call_end_time).strftime("%Y-%m-%d %H:%M:%S"),
+            "speaking_percentage": round(((call_duration - total_silence_time) / call_duration * 100), 1) if call_duration > 0 else 0
         }
         
         return summary
@@ -301,12 +316,11 @@ async def main(
     silence_threshold = silence_settings.get("silenceThreshold", 10.0)
     max_unanswered_prompts = silence_settings.get("maxUnansweredPrompts", 3)
     
-    logger.info(f"Silence detection configured with threshold: {silence_threshold}s, max unanswered prompts: {max_unanswered_prompts}")
-    
-    # Initialize the silence detector
+    # Initialize the silence detector with TTS service
     silence_detector = SilenceDetector(
         silence_threshold=silence_threshold,
-        max_unanswered_prompts=max_unanswered_prompts
+        max_unanswered_prompts=max_unanswered_prompts,
+        tts_service=tts
     )
     silence_detector.register_terminate_function(terminate_call)
 
